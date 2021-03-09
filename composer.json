@@ -1,0 +1,33 @@
+{
+    "name": "drupal/jw_webhooks",
+    "description": "A Drupal 7 module that provides hooks to interact with the JW Management v2 Webhooks API.",
+    "type": "drupal-module",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Donovan Mueller",
+            "email": "zotobi@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "repositories": [
+      {
+        "type": "vcs",
+        "url": "https://github.com/RightThisMinute/jw-platform-php.git"
+      }
+    ],
+  "require": {
+    "lstrojny/functional-php": "^1.11",
+    "rightthisminute/jw-platform-php": "dev-master",
+        "ralouphie/getallheaders": "^3.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Drupal\\jw_webhooks\\": "src"
+    },
+    "files": [
+      "src/base.php"
+    ]
+  }
+}

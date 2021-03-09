@@ -1,0 +1,166 @@
+<?php
+declare(strict_types=1);
+
+use Drupal\jw_webhooks as _;
+use RightThisMinute\JWPlatform\Management\v2\endpoint\webhooks;
+use RightThisMinute\JWPlatform\Management\v2\response\Webhook;
+use RTM\Drupal\helpers\log;
+use function Functional\each as each_;
+use function Functional\map;
+use function Functional\partition;
+use function Functional\pluck;
+use function Functional\select;
+use function Functional\unique;
+
+
+/**
+ * Implements hook_menu().
+ */
+function jw_webhooks_menu ()
+{
+  $items[_\get_receive_path()] =
+    [ 'title' => 'JW Webhooks receiver'
+    , 'description' => 'Receives webhook requests from JW.'
+    , 'page callback' => 'Drupal\jw_webhooks\handle_publish_request'
+    , 'access callback' => true
+    , 'type' => MENU_CALLBACK ];
+
+  return $items;
+}
+
+
+/**
+ * Implements hook_cron().
+ *
+ * Setup webhooks with JW based on stated need.
+ */
+function jw_webhooks_cron ()
+{
+  # Get list of events that need monitoring.
+  $events = module_invoke_all('jw_webhooks_register');
+  $events = map($events, function($e){ return strtolower($e); });
+  $events = unique($events);
+
+  # Grab list of existent hooks from JW.
+  try {
+    $hooks = webhooks\list_(_\jw_client(), 1, 9999);
+  }
+  catch (\Exception $exn) {
+    log\error
+      ( 'jw_webhooks'
+      , 'Failed getting list of webhooks from JW: %msg'
+      , ['%msg' => $exn] );
+    return;
+  }
+
+  # Find unnecessary hooks.
+  $receive_url = _\get_receive_url();
+  $site_id = variable_get('jw_webhooks_default_site_id');
+
+  [$keep, $lose] = partition
+    ( $hooks->body->webhooks
+    , function(Webhook $hook)use($receive_url, $site_id, $events){
+      $metadata = $hook->metadata;
+
+      $hook_events = $metadata->events;
+      sort($hook_events);
+      sort($events);
+
+      $hook_site_ids = $metadata->site_ids;
+      sort($hook_site_ids);
+
+      return
+        $metadata->webhook_url === $receive_url
+        && $hook_events == $events
+        && $hook_site_ids == [$site_id];
+    });
+
+  # Filter out those not created by this module.
+  $hook_records = _\get_local_hook_records();
+  $local_ids = pluck($hook_records, 'id');
+  $lose = select($lose, function(Webhook $hook)use($receive_url, $local_ids){
+    return
+      in_array($hook->id, $local_ids)
+      || $hook->metadata->webhook_url === $receive_url;
+  });
+
+  # Delete unnecessary webhooks.
+  each_($lose, function(Webhook $hook){
+    try {
+      webhooks\delete(_\jw_client(), $hook->id);
+    }
+    catch (Exception $exn) {
+      log\error
+        ( 'jw_webhooks'
+        , 'Failed deleting webhook (%id) at JW: %msg'
+        , ['%id' => $hook->id, '%msg' => $exn] );
+      return;
+    }
+
+    _\delete_local_hook_record($hook->id);
+  });
+
+  if (count($lose) > 0)
+    log\notice
+      ( 'jw_webhooks'
+      , 'Deleted unnecessary webhooks: %hook_ids'
+      , [ '%hook_ids' =>
+            implode(', ', pluck($lose, 'id')) ]);
+
+  # Clear out local webhook records if they no longer exist at JW.
+  $remote_ids = pluck($hooks->body->webhooks, 'id');
+  $orphans = array_diff($local_ids, $remote_ids);
+  $deleted_ids = pluck($lose, 'id');
+  $orphans = array_diff($orphans, $deleted_ids);
+  each_($orphans, function($id){ _\delete_local_hook_record($id); });
+
+  # Create necessary webhooks if they don't already exist.
+  if (count($events) === 0)
+    # With no events registered by modules, no need for any webhooks.
+    return;
+
+  if (count($keep) >= 1)
+    # Since specifying site IDs is not supported in the register hook, there
+    # should only ever be one webhook created at JW for this module.
+    return;
+
+  $name = variable_get('jw_webhooks_name_prefix');
+
+  if (!isset($name)) {
+    global $base_url;
+    $name = preg_replace
+      ('#https?://(?:www\.)?#i', '', $base_url);
+    $name = trim($name, '/');
+    $name = "$name/drupal/jw_webhooks";
+  }
+
+  try {
+    $webhook = webhooks\create(_\jw_client(), $name, $events, $receive_url);
+  }
+  catch (Exception $exn) {
+    log\error
+      ( 'jw_webhooks'
+      , 'Failed creating webhook at JW: %msg'
+      , [ '%msg' => $exn
+        , 'events' => $events
+        , 'pub_url' => $receive_url ]);
+    return;
+  }
+
+  # Record webhook to DB.
+  try {
+    _\save_local_hook_record($webhook->body->id, $webhook->body->secret);
+  }
+  catch (Exception $exn) {
+    log\error
+      ( 'jw_webhooks'
+      , 'Failed saving local record of webhook (%id): %msg'
+      , ['%id' => $webhook->body->id, '%msg' => $exn]);
+    return;
+  }
+
+  log\notice
+    ( 'jw_webhooks'
+    , 'Created webhook %id'
+    , ['%id' => $webhook->body->id] );
+}

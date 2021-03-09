@@ -1,0 +1,78 @@
+<?php
+declare(strict_types=1);
+
+
+use Drupal\jw_webhooks as _;
+use RTM\Drupal\helpers\log;
+
+use function Functional\each as each_;
+use RightThisMinute\JWPlatform\Management\v2\endpoint\webhooks;
+
+
+/**
+ * Implements hook_schema().
+ */
+function jw_webhooks_schema () : array
+{
+  $table =
+    [ 'description' =>
+        'Records of created webhook resources and their secret keys.' ];
+
+  $table['fields'] =
+    [ 'id' =>
+      [ 'description' => 'The ID of the webhook resource as provided by JW.'
+      , 'type' => 'varchar'
+      , 'length' => 255
+      , 'not null' => true ]
+
+    , 'secret' =>
+      [ 'description' =>
+          'Shared secret used for verifying authenticity of webhook'
+      , 'type' => 'varchar'
+      , 'length' => 255
+      , 'no null' => true ]
+
+    , 'created' =>
+      ['description' =>
+          'The Unix timestamp when the webhook was created or discovered.'
+      , 'type'        => 'int'
+      , 'unsigned'    => true
+      , 'not null'    => true
+      , 'default'     => 0 ]];
+
+  $table['primary key'] = ['id'];
+
+  return ['jw_webhooks' => $table];
+}
+
+
+/**
+ * Implements hook_disable().
+ *
+ * Remove webhooks created at JW.
+ */
+function jw_webhooks_disable () : void
+{
+  $local_records = _\get_local_hook_records();
+
+  each_($local_records, function($hook){
+    try {
+      webhooks\delete(_\jw_client(), $hook->id);
+    }
+    catch (Exception $exn) {
+      $message = t
+        ( 'Failed deleting webhook (%id) at JW: %msg'
+        , ['%id' => $hook->id, '%msg' => $exn] );
+
+      drupal_set_message($message, 'error', false);
+
+      log\error
+        ( 'jw_webhooks'
+        , 'Failed deleting webhook (%id) at JW: %msg'
+        , ['%id' => $hook->id, '%msg' => $exn] );
+      return;
+    }
+
+    _\delete_local_hook_record($hook->id);
+  });
+}

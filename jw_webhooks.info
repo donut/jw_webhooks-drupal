@@ -1,0 +1,6 @@
+name = JW Webhooks
+description = Adds hooks for working with the JW Management v2 Webhooks API.
+core = 7.x
+package = JW Player
+project = "jw_webhooks"
+version = 7.x-1.00

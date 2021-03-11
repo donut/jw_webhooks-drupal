@@ -51,7 +51,8 @@ function get_receive_path () : string
 function get_receive_url () : string
 {
   $path = get_receive_path();
-  return url($path, ['absolute' => true]);
+  # JW requires an HTTPS URL.
+  return url($path, ['absolute' => true, 'https' => true]);
 }
 
 

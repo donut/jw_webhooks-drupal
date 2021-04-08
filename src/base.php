@@ -4,10 +4,10 @@ declare(strict_types=1);
 namespace Drupal\jw_webhooks;
 
 
+use RightThisMinute\Drupal\extra_log as log;
 use RightThisMinute\JWPlatform\Management\v2\Client;
 use function Functional\first;
 use function Functional\map;
-use RTM\Drupal\helpers\log;
 use function RightThisMinute\JWPlatform\Management\v2\endpoint\webhooks\authenticate_and_parse_publish_request;
 use function RightThisMinute\JWPlatform\Management\v2\endpoint\webhooks\webhook_id_of_publish_request_body;
 

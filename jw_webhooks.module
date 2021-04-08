@@ -4,7 +4,7 @@ declare(strict_types=1);
 use Drupal\jw_webhooks as _;
 use RightThisMinute\JWPlatform\Management\v2\endpoint\webhooks;
 use RightThisMinute\JWPlatform\Management\v2\response\Webhook;
-use RTM\Drupal\helpers\log;
+use RightThisMinute\Drupal\extra_log as log;
 use function Functional\each as each_;
 use function Functional\map;
 use function Functional\partition;

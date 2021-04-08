@@ -15,19 +15,24 @@
       {
         "type": "vcs",
         "url": "https://github.com/RightThisMinute/jw-platform-php.git"
+      },
+      {
+        "type": "vcs",
+        "url": "https://github.com/RightThisMinute/extra_log-drupal.git"
       }
     ],
-  "require": {
-    "lstrojny/functional-php": "^1.11",
-    "rightthisminute/jw-platform-php": "dev-master",
-        "ralouphie/getallheaders": "^3.0"
-  },
-  "autoload": {
-    "psr-4": {
-      "Drupal\\jw_webhooks\\": "src"
+    "require": {
+        "lstrojny/functional-php": "^1.11",
+        "rightthisminute/jw-platform-php": "dev-master",
+        "ralouphie/getallheaders": "^3.0",
+        "rightthisminute/extra_log-drupal": "dev-7.x-1.x"
     },
-    "files": [
-      "src/base.php"
-    ]
-  }
+    "autoload": {
+        "psr-4": {
+            "Drupal\\jw_webhooks\\": "src"
+        },
+        "files": [
+            "src/base.php"
+        ]
+    }
 }

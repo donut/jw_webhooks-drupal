@@ -25,7 +25,7 @@
         "lstrojny/functional-php": "^1.11",
         "rightthisminute/jw-platform-php": "dev-master",
         "ralouphie/getallheaders": "^3.0",
-        "rightthisminute/extra_log-drupal": "dev-7.x-1.x"
+        "rightthisminute/extra_log-drupal": "7.x-dev"
     },
     "autoload": {
         "psr-4": {
